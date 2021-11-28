@@ -32,7 +32,8 @@ def save_as(type, spark):
     fs.delete(sc._jvm.Path('exported-data'), True)
 
 
-spark = SparkSession.builder.appName('Spark-IMDb-Project').config('spark.sql.analyzer.failAmbiguousSelfJoin',False).getOrCreate()
+# spark = SparkSession.builder.appName('Spark-IMDb-Project').config('spark.sql.analyzer.failAmbiguousSelfJoin',False).getOrCreate()
+spark = SparkSession.builder.appName('Spark-IMDb-Project').getOrCreate()
 
 movies_genre_file = "data/MOVIES_GENRE.txt"
 user_movies_file = "data/USER_MOVIES.txt"
@@ -111,7 +112,7 @@ final_cubed = (
     .agg(round(avg(col("rating")),2).alias("avg_rating"))
     .orderBy("genre", "gender")
 )
-# final_cubed.show()
+final_cubed.show()
 
 #### ----------------------------------------------------------- Query 1 -------------------------------------------------------------------
 # Calculating each Group By produced by the cube
@@ -149,14 +150,30 @@ gb_none.show(truncate=False)
 #### ----------------------------------------------------------- Query 2 ---------------------------------------------------------------
 
 # We will use the Group By ('genre','gender') 
-female_ratings = gb_genre_gender.filter(gb_genre_gender.gender == 'F')
+female_ratings = gb_genre_gender.withColumnRenamed('avg_rating', 'female_avg_rating').filter(gb_genre_gender.gender == 'F')
 male_ratings = gb_genre_gender.withColumnRenamed('avg_rating', 'male_avg_rating').filter(gb_genre_gender.gender == 'M')
-joined = male_ratings.join(female_ratings.withColumnRenamed('avg_rating', 'female_avg_rating'), ['genre'])
+joined = male_ratings.join(female_ratings, ['genre'])
 joined.createOrReplaceTempView('GenreRatingsPerGender')
 
 data = spark.sql('SELECT genre FROM GenreRatingsPerGender WHERE female_avg_rating > male_avg_rating')
 data.show()
 
 
+# ### ---------------------------------------------------------- Query 3 -------------------------------------------------------------
+# select count() group by rating, the chosen genre is 'Adventure 
+rating_per_genre = final_joined.where(col('genre') == 'Adventure').groupBy(col('rating')).count().withColumnRenamed("count","total_ratings").orderBy(col('rating'))
+rating_per_genre.show()
 
+ratings_df = rating_per_genre.toPandas()
 
+labels =  ratings_df.rating
+sizes = ratings_df.total_ratings
+
+colors = ['#ff9999','#66b3ff','#99ff99','#ffcc99','#F9E79F']
+
+fig1, ax1 = plt.subplots()
+ax1.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%',
+        shadow=True, startangle=90)
+ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+
+plt.show()
