@@ -6,33 +6,9 @@ from pyspark.sql.functions import col,avg,round
 import pandas as pd
 import matplotlib.pyplot as plt
 from py4j.java_gateway import java_import
-
-def save_as(type, spark): 
-    # Determine the correct name to use.  
-    if type == 1:
-        name = 'Genre'
-    elif type == 2:
-        name = 'Gender'
-    elif type == 3:
-        name = 'Genre_Gender'
-    else:
-        name = 'None'
-
-    # Set up hadoop filesystem.    
-    java_import(spark._jvm, 'org.apache.hadoop.fs.Path')
-    fs = spark._jvm.org.apache.hadoop.fs.FileSystem.get(spark._jsc.hadoopConfiguration())
-
-    # Get the file name. I have prespecified the directory when exporting the data, and now i get all the files (1)
-    # in that directory
-    file = fs.globStatus(sc._jvm.Path('exported-data/part*'))[0].getPath().getName()
-    # Rename the file to the desired name based on the input type and place it in a final directory
-    fs.rename(sc._jvm.Path('exported-data/' + file), sc._jvm.Path('final_data/'+name+'.csv'))
-
-    # Delete the old directory
-    fs.delete(sc._jvm.Path('exported-data'), True)
+import numpy as np
 
 
-# spark = SparkSession.builder.appName('Spark-IMDb-Project').config('spark.sql.analyzer.failAmbiguousSelfJoin',False).getOrCreate()
 spark = SparkSession.builder.appName('Spark-IMDb-Project').getOrCreate()
 
 movies_genre_file = "data/MOVIES_GENRE.txt"
@@ -161,6 +137,8 @@ data.show()
 
 # ### ---------------------------------------------------------- Query 3 -------------------------------------------------------------
 # select count() group by rating, the chosen genre is 'Adventure 
+
+# Chart pie
 rating_per_genre = final_joined.where(col('genre') == 'Adventure').groupBy(col('rating')).count().withColumnRenamed("count","total_ratings").orderBy(col('rating'))
 rating_per_genre.show()
 
@@ -169,13 +147,43 @@ ratings_df = rating_per_genre.toPandas()
 labels =  ratings_df.rating
 sizes = ratings_df.total_ratings
 
-colors = ['#ff9999','#66b3ff','#99ff99','#ffcc99','#F9E79F']
+# colors = ['#ff9999','#66b3ff','#99ff99','#ffcc99','#F9E79F']
+colors = ['#F3A935','#2586a4','#6ebe9f','#55596a','#c73558']
+fig, ax = plt.subplots()
 
-fig1, ax1 = plt.subplots()
-ax1.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%',
-        shadow=True, startangle=90)
-ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-
-plt.show()
+def func(pct, allvals):
+    absolute = int(np.round(pct/100.*np.sum(allvals)))
+    return "{:.1f}%\n({:d})".format(pct, absolute)
 
 
+wedges, texts, autotexts = ax.pie(sizes,labels=labels, colors=colors, autopct=lambda pct: func(pct, sizes),
+                                  textprops=dict(color="w"))
+
+ax.legend(wedges, labels,
+          title="Ratings",
+          loc="center left",
+          bbox_to_anchor=(1, 0, 0.5, 1))
+
+plt.setp(autotexts, size=8, weight="bold")
+
+ax.set_title("Query 3")
+
+# plt.show()
+plt.savefig('Query3_pie.png')
+
+# Clear plt
+plt.clf()
+
+##################################################
+# Chart bars
+
+fig1 = plt.figure(figsize = (10, 5))
+ 
+# creating the bar plot
+plt.bar(labels, sizes, color = colors,
+        width = 0.4)
+ 
+plt.xlabel("Ratings")
+plt.ylabel("No. of persons' rating")
+plt.title("Query 3")
+plt.savefig('Query3_bars.png')
