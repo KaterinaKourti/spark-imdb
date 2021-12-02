@@ -5,10 +5,9 @@ from pyspark.sql.types import *
 from pyspark.sql.functions import col,avg,round
 import pandas as pd
 import matplotlib.pyplot as plt
-from py4j.java_gateway import java_import
 import numpy as np
 
-
+# spark = SparkSession.builder.appName('Spark-IMDb-Project').config('spark.sql.analyzer.failAmbiguousSelfJoin',False).getOrCreate()
 spark = SparkSession.builder.appName('Spark-IMDb-Project').getOrCreate()
 
 movies_genre_file = "data/MOVIES_GENRE.txt"
@@ -97,28 +96,28 @@ final_cubed.show()
 gb_genre = final_cubed.filter(final_cubed.genre.isNotNull() & final_cubed.gender.isNull())
 # gb_genre.repartition(1).write.csv('exported-data')
 # save_as(1,spark)
-pd_gb_genre = gb_genre.repartition(1).toPandas()
+pd_gb_genre = gb_genre.toPandas()
 pd_gb_genre.to_csv('Genre.csv',index=False)
 gb_genre.show(truncate=False)
 
 # ----------------------------------------------------------------------------------------
 # Group By 'gender'
 gb_gender = final_cubed.filter(final_cubed.gender.isNotNull() & final_cubed.genre.isNull())
-pd_gb_gender = gb_gender.repartition(1).toPandas()
+pd_gb_gender = gb_gender.toPandas()
 pd_gb_gender.to_csv('Gender.csv',index=False)
 gb_gender.show(truncate=False)
 
 # ----------------------------------------------------------------------------------------
 # Group By ('genre','gender')
 gb_genre_gender = final_cubed.filter(final_cubed.gender.isNotNull() & final_cubed.genre.isNotNull())
-pd_gb_genre_gender = gb_genre_gender.repartition(1).toPandas()
+pd_gb_genre_gender = gb_genre_gender.toPandas()
 pd_gb_genre_gender.to_csv('Genre_Gender.csv',index=False)
 gb_genre_gender.show(truncate=False)
 
 # ----------------------------------------------------------------------------------------
 # Group By 'none'
 gb_none = final_cubed.filter(final_cubed.gender.isNull() & final_cubed.genre.isNull())
-pd_gb_none = gb_none.repartition(1).toPandas()
+pd_gb_none = gb_none.toPandas()
 pd_gb_none.to_csv('None.csv',index=False)
 gb_none.show(truncate=False)
 
