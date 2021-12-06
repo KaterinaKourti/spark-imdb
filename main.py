@@ -3,6 +3,7 @@ from pyspark import SparkContext
 from pyspark.sql.types import *
 
 from pyspark.sql.functions import col,avg,round
+from os import path,getcwd
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -47,7 +48,6 @@ movies_genre_df = (
     .csv(movies_genre_file)
 )
 # movies_genre_df.show()
-movies_genre_df.createOrReplaceTempView("TempMoviesGenre")
 
 user_movies_df = (
     spark.read.schema(user_movies_schema)
@@ -56,7 +56,6 @@ user_movies_df = (
     .csv(user_movies_file)
 )
 # user_movies_df.show()
-user_movies_df.createOrReplaceTempView("TempUserMovies")
 
 users_df = (
     spark.read.schema(users_schema)
@@ -65,7 +64,6 @@ users_df = (
     .csv(users_file)
 )
 # users_df.show()
-users_df.createOrReplaceTempView("TempUsers")
 
 ### Join the appropriate tables in order to create one table in which the cube operator will be applied
 # After having the Users table joined with the UserMovies table,
@@ -90,35 +88,36 @@ final_cubed = (
 final_cubed.show()
 
 #### ----------------------------------------------------------- Query 1 -------------------------------------------------------------------
+folder = 'cube-results'
+filepath = path.join(folder,'{}')
+
 # Calculating each Group By produced by the cube
 # ----------------------------------------------------------------------------------------
 # Group By 'genre'
 gb_genre = final_cubed.filter(final_cubed.genre.isNotNull() & final_cubed.gender.isNull())
-# gb_genre.repartition(1).write.csv('exported-data')
-# save_as(1,spark)
 pd_gb_genre = gb_genre.toPandas()
-pd_gb_genre.to_csv('Genre.csv',index=False)
+pd_gb_genre.to_csv(filepath.format('Genre.csv'),index=False)
 gb_genre.show(truncate=False)
 
 # ----------------------------------------------------------------------------------------
 # Group By 'gender'
 gb_gender = final_cubed.filter(final_cubed.gender.isNotNull() & final_cubed.genre.isNull())
 pd_gb_gender = gb_gender.toPandas()
-pd_gb_gender.to_csv('Gender.csv',index=False)
+pd_gb_gender.to_csv(filepath.format('Gender.csv'),index=False)
 gb_gender.show(truncate=False)
 
 # ----------------------------------------------------------------------------------------
 # Group By ('genre','gender')
 gb_genre_gender = final_cubed.filter(final_cubed.gender.isNotNull() & final_cubed.genre.isNotNull())
 pd_gb_genre_gender = gb_genre_gender.toPandas()
-pd_gb_genre_gender.to_csv('Genre_Gender.csv',index=False)
+pd_gb_genre_gender.to_csv(filepath.format('Genre_Gender.csv'),index=False)
 gb_genre_gender.show(truncate=False)
 
 # ----------------------------------------------------------------------------------------
 # Group By 'none'
 gb_none = final_cubed.filter(final_cubed.gender.isNull() & final_cubed.genre.isNull())
 pd_gb_none = gb_none.toPandas()
-pd_gb_none.to_csv('None.csv',index=False)
+pd_gb_none.to_csv(filepath.format('None.csv'),index=False)
 gb_none.show(truncate=False)
 
 
@@ -136,8 +135,6 @@ data.show()
 
 # ### ---------------------------------------------------------- Query 3 -------------------------------------------------------------
 # select count() group by rating, the chosen genre is 'Adventure 
-
-# Chart pie
 rating_per_genre = final_joined.where(col('genre') == 'Adventure').groupBy(col('rating')).count().withColumnRenamed("count","total_ratings").orderBy(col('rating'))
 rating_per_genre.show()
 
@@ -165,10 +162,10 @@ ax.legend(wedges, labels,
 
 plt.setp(autotexts, size=8, weight="bold")
 
-ax.set_title("Query 3")
+ax.set_title("Total count number per rating for genre 'Adventure'")
 
 # plt.show()
-plt.savefig('Query3_pie.png')
+plt.savefig('ratings_pie.png')
 
 # Clear plt
 plt.clf()
@@ -182,7 +179,7 @@ fig1 = plt.figure(figsize = (10, 5))
 plt.bar(labels, sizes, color = colors,
         width = 0.4)
  
-plt.xlabel("Ratings")
-plt.ylabel("No. of persons' rating")
-plt.title("Query 3")
-plt.savefig('Query3_bars.png')
+plt.xlabel("Rating")
+plt.ylabel("Total Number of Ratings")
+plt.title("Total count number per rating for genre 'Adventure'")
+plt.savefig('rating_bars.png')
